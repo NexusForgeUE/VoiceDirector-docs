@@ -6,7 +6,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
 const check = (condition, message) => { if (!condition) failures.push(message); };
 const read = path => readFile(resolve(root, path), 'utf8');
-check(await read('README.md') === 'Документация к проекту\n', 'README must contain only the requested sentence');
+check(await read('README.md') === 'Project documentation\n', 'README must contain only the requested English sentence');
 const requiredUI = ['documentation','guideLabel','language','theme','print','menu','contents','skip','search','searchPlaceholder','searchResults','noResults','groups','workflow','steps','firstLesson','uiNote','linkSection','zoom','originalSize','close','backTop','noScript','example','sampleTitle','sampleDescription','downloadCSV','downloadWAV','listenSample'];
 let expectedSections;
 let checkedLinks = 0;
@@ -31,7 +31,8 @@ for (const [locale] of locales) {
   for (const [, value] of html.matchAll(/\b(?:href|src|data-zoom)="([^"]+)"/g)) {
     if (/^(https?:|mailto:)/.test(value)) continue;
     checkedLinks++;
-    const [file, fragment] = value.split('#');
+    const [fileWithQuery, fragment] = value.split('#');
+    const file = fileWithQuery.split('?')[0];
     if (!file) { check(ids.includes(fragment), `${locale}: missing anchor ${fragment}`); continue; }
     const target = resolve(root, locale, decodeURIComponent(file));
     check(target.startsWith(root + '\\') || target.startsWith(root + '/'), `${locale}: escaping link ${value}`);

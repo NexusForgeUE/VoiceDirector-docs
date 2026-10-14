@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const locales = [
@@ -13,6 +14,7 @@ const groups = [[0, 3], [3, 5], [5, 9], [9, 14], [14, 19]];
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const baseURL = 'https://nexusforgeue.github.io/VoiceDirector-docs/';
 const screenshotSizes = {};
+const assetVersions = {};
 
 function figure(name, content) {
   if (!['lines', 'voices', 'jobs', 'publish', 'settings'].includes(name)) throw new Error(`Unknown screenshot: ${name}`);
@@ -44,7 +46,7 @@ function render(content, locale) {
 <title>VoiceDirector | ${escape(u.documentation)}</title><meta name="description" content="${escape(content.description)}">
 <link rel="canonical" href="${baseURL}${locale}/">${alternateLinks}
 <link rel="icon" type="image/svg+xml" href="../assets/voice-director.svg">
-<link rel="stylesheet" href="../assets/site.css"><script src="../assets/site.js" defer></script>
+<link rel="stylesheet" href="../assets/site.css?v=${assetVersions['site.css']}"><script src="../assets/site.js?v=${assetVersions['site.js']}" defer></script>
 <noscript><style>.search,.locale-picker,.icon-button,.print-button,.menu-toggle{display:none}@media(max-width:900px){.sidebar{position:static;transform:none;visibility:visible;width:auto;height:auto;box-shadow:none;border-right:0;border-bottom:1px solid var(--border)}}</style></noscript>
 </head>
 <body data-no-results="${escape(u.noResults)}" data-search-label="${escape(u.searchResults)}">
@@ -58,6 +60,9 @@ function render(content, locale) {
 }
 
 export async function build() {
+  for (const name of ['site.css', 'site.js', 'locale.js']) {
+    assetVersions[name] = createHash('sha256').update(await readFile(resolve(root, 'assets', name))).digest('hex').slice(0, 12);
+  }
   for (const name of ['lines', 'voices', 'jobs', 'publish', 'settings']) {
     const buffer = await readFile(resolve(root, 'assets/screenshots', `${name}.png`));
     screenshotSizes[name] = [buffer.readUInt32BE(16), buffer.readUInt32BE(20)];
@@ -71,7 +76,7 @@ export async function build() {
     await writeFile(resolve(root, locale, 'index.html'), html);
     console.log(`${locale}: ${content.sections.length} sections, ${html.length} characters`);
   }
-  await writeFile(resolve(root, 'index.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="VoiceDirector documentation in nine languages. Unreal Engine 5.5-5.8."><title>VoiceDirector Documentation</title><link rel="icon" href="assets/voice-director.svg"><link rel="stylesheet" href="assets/site.css"></head><body><main class="language-home"><img src="assets/voice-director.svg" width="64" height="64" alt=""><h1>VoiceDirector</h1><p>Documentation · UE 5.5-5.8 · Windows x64</p><nav aria-label="Language">${locales.map(([code, label]) => `<a class="button" lang="${code}" href="${code}/">${label}</a>`).join('')}</nav></main><script src="assets/locale.js"></script></body></html>\n`);
+  await writeFile(resolve(root, 'index.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="VoiceDirector documentation in nine languages. Unreal Engine 5.5-5.8."><title>VoiceDirector Documentation</title><link rel="icon" href="assets/voice-director.svg"><link rel="stylesheet" href="assets/site.css?v=${assetVersions['site.css']}"></head><body><main class="language-home"><img src="assets/voice-director.svg" width="64" height="64" alt=""><h1>VoiceDirector</h1><p>Documentation · UE 5.5-5.8 · Windows x64</p><nav aria-label="Language">${locales.map(([code, label]) => `<a class="button" lang="${code}" href="${code}/">${label}</a>`).join('')}</nav></main><script src="assets/locale.js?v=${assetVersions['locale.js']}"></script></body></html>\n`);
   await writeFile(resolve(root, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${locales.map(([locale]) => `<url><loc>${baseURL}${locale}/</loc></url>`).join('')}</urlset>\n`);
   await writeFile(resolve(root, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${baseURL}sitemap.xml\n`);
 }

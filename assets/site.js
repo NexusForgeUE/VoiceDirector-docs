@@ -19,7 +19,6 @@
     storageSet('voicedirector-theme', value);
   });
   locale.addEventListener('change', () => {
-    storageSet('voicedirector-language', locale.value);
     const current = navLinks.find(link => link.classList.contains('active'));
     location.href = `../${locale.value}/${current ? current.hash : location.hash}`;
   });
